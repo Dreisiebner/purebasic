@@ -589,7 +589,6 @@ DataSection
   Data$ "Export",           "Export issue list"
   
   ; For the 'Multicolored Procedure List' and the controls for coloring and scrolling.
-  Data$ "FilterClear",	      "Removes the filter"
   Data$ "HideModuleNames",	   "Hide module names"
   Data$ "HighlightProcedure", "Automatically determine and highlight the current procedure"
   Data$ "ScrollProcedure",		"Automatically scroll to current procedure"

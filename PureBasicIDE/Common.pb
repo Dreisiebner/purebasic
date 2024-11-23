@@ -170,7 +170,6 @@ Runtime Enumeration 1 ; 0 is reserved for uninitialized #PB_Any
   #GADGET_ProcedureBrowser
   ; Controls for the 'Multicolored Procedure List'
   #GADGET_ProcedureBrowser_FilterInput
-  #GADGET_ProcedureBrowser_FilterClear
   #GADGET_ProcedureBrowser_HideModuleNames
   #GADGET_ProcedureBrowser_HighlightProcedure
   #GADGET_ProcedureBrowser_ScrollProcedure

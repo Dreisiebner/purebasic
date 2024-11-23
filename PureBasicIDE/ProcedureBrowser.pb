@@ -10,7 +10,7 @@ Enumeration ProcedureBrowserColumn
 EndEnumeration
 
 ; For the list with the names or texts and colors that are colored in the procedure browser.
-Structure ProcedureBrowserItemColor ; PeDre - Structure to EndStructure
+Structure ProcedureBrowserItemColor
   Text$
   BackColor.i
   FrontColor.i
@@ -62,10 +62,10 @@ Procedure ProcedureBrowser_DisableColorButtons(Type.i)
   DisableGadget(#GADGET_ProcedureBrowser_BackColor, State)
   DisableGadget(#GADGET_ProcedureBrowser_RestoreColor, State)	
   
-EndProcedure ; PeDre
+EndProcedure
 
 
-Procedure.i ProcedureBrowser_IsLineInside(Line.i, Type.i) ; PeDre - Procedure to EndProcedure
+Procedure.i ProcedureBrowser_IsLineInside(Line.i, Type.i)
   ; Determines whether the line number is within a procedure or macro.
   
   PushListPosition(ProcedureList())
@@ -489,11 +489,13 @@ Procedure ProcedureBrowser_Filter(Text$)
   Static PreviousHighlightProcedure.i
   
   ; Deactivate highlighting for active filters.
-  If Len(Text$)
+  If Asc(Text$)
     ProcedureBrowserFilter = #True
     SetGadgetState(#GADGET_ProcedureBrowser_HighlightProcedure, 0)
     DisableGadget(#GADGET_ProcedureBrowser_HighlightProcedure, #True)
-    PreviousHighlightProcedure = ProcedureBrowserHighlightProcedure
+    If Asc(ProcedureBrowserFilterText$) = 0
+      PreviousHighlightProcedure = ProcedureBrowserHighlightProcedure
+    EndIf
     ProcedureBrowserHighlightProcedure = 0
   Else
     ProcedureBrowserFilter = #False
@@ -501,8 +503,6 @@ Procedure ProcedureBrowser_Filter(Text$)
     SetGadgetState(#GADGET_ProcedureBrowser_HighlightProcedure, PreviousHighlightProcedure)
     ProcedureBrowserHighlightProcedure = PreviousHighlightProcedure
   EndIf
-  
-  SetActiveGadget(*ActiveSource\EditorGadget)          
   
   ProcedureBrowserFilterText$ = Text$
   UpdateProcedureList()
@@ -513,9 +513,7 @@ EndProcedure
 CompilerIf #CompileLinuxGtk
   ProcedureC ProcedureBrowser_FilterKeyEvent(*Widget, *Event.GdkEventKey, user_data)
       
-    If *Event\keyval = $FF0D Or *Event\keyval = $FF8D ; it was an enter (second one is numpad enter)
-      PostEvent(#PB_Event_Gadget, #WINDOW_Main, #GADGET_ProcedureBrowser_FilterInput, #PB_EventType_Change, #PB_Key_Return)
-    EndIf
+    PostEvent(#PB_Event_Gadget, #WINDOW_Main, #GADGET_ProcedureBrowser_FilterInput, #PB_EventType_Change)
   
   EndProcedure
   
@@ -599,7 +597,6 @@ Procedure UpdateProcedureList(ScrollPosition.l = -1) ; scroll position -1 means 
                 
               Case #ITEM_Macro
                  ; Save the current element from the list; it is still required in case the macro ends.
-                ;AddElement(ProcedureList()) ; PeDre
                 *ProcedureListMacro.ProcedureInfo = AddElement(ProcedureList())
                 ProcedureList()\Name$ = ModulePrefix$ + *Item\Name$
                 ProcedureList()\Line  = i+1
@@ -968,7 +965,6 @@ Procedure ProcedureBrowser_CreateFunction(*Entry.ToolsPanelEntry, PanelItemID)
     
     ; Filter.
     StringGadget(#GADGET_ProcedureBrowser_FilterInput, 0, 0, 0, 0, "")
-    ButtonImageGadget(#GADGET_ProcedureBrowser_FilterClear, 0, 0, 0, 0, ImageID(#IMAGE_ProcedureBrowser_FilterClear))
       
     ; Buttons for coloring, automatic selection and scrolling. 
     ButtonImageGadget(#GADGET_ProcedureBrowser_HideModuleNames, 0, 0, 0, 0, ImageID(#IMAGE_ProcedureBrowser_HideModuleNames), #PB_Button_Toggle)
@@ -982,11 +978,9 @@ Procedure ProcedureBrowser_CreateFunction(*Entry.ToolsPanelEntry, PanelItemID)
     ButtonImageGadget(#GADGET_ProcedureBrowser_SwitchButtons, 0, 0, 0, 0, ImageID(#IMAGE_ProcedureBrowser_SwitchButtons))
     
     CompilerIf #CompileLinuxGtk
-      GtkSignalConnect(GadgetID(#GADGET_ProcedureBrowser_FilterInput), "key-press-event", @ProcedureBrowser_FilterKeyEvent(), 0)
       GtkSignalConnect(GadgetID(#GADGET_ProcedureBrowser_CopyClipboard), "button-press-event", @ProcedureBrowser_CopyClipboardButtonEvent(), 0)
     CompilerEndIf
 
-    GadgetToolTip(#GADGET_ProcedureBrowser_FilterClear, Language("ToolsPanel", "FilterClear"))
     GadgetToolTip(#GADGET_ProcedureBrowser_HideModuleNames, Language("ToolsPanel", "HideModuleNames"))
     GadgetToolTip(#GADGET_ProcedureBrowser_HighlightProcedure, Language("ToolsPanel", "HighlightProcedure"))
     GadgetToolTip(#GADGET_ProcedureBrowser_ScrollProcedure, Language("ToolsPanel", "ScrollProcedure"))
@@ -1000,7 +994,6 @@ Procedure ProcedureBrowser_CreateFunction(*Entry.ToolsPanelEntry, PanelItemID)
     If EnableAccessibility
       ; Sets a label on the buttons for screen reader users.
       ; This label is only ever seen by screen readers, and never visually shown.
-      SetGadgetText(#GADGET_ProcedureBrowser_FilterClear, Language("ToolsPanel", "FilterClear"))
       SetGadgetText(#GADGET_ProcedureBrowser_HideModuleNames, Language("ToolsPanel", "HideModuleNames"))
       SetGadgetText(#GADGET_ProcedureBrowser_HighlightProcedure, Language("ToolsPanel", "HighlightProcedure"))
       SetGadgetText(#GADGET_ProcedureBrowser_ScrollProcedure, Language("ToolsPanel", "ScrollProcedure"))
@@ -1099,8 +1092,7 @@ Procedure ProcedureBrowser_ResizeHandler(*Entry.ToolsPanelEntry, PanelWidth, Pan
       ResizeGadget(#GADGET_ProcedureBrowser, 0, 10+Height, PanelWidth, PanelHeight-Height-20-Height)
     EndIf
 
-    ResizeGadget(#GADGET_ProcedureBrowser_FilterInput, 5, 5, PanelWidth-10-Space-Width, Height)
-    ResizeGadget(#GADGET_ProcedureBrowser_FilterClear, PanelWidth-5-Width, 5, Width, Height)
+    ResizeGadget(#GADGET_ProcedureBrowser_FilterInput, 5, 5, PanelWidth-10, Height)
     
     ResizeGadget(#GADGET_ProcedureBrowser_HideModuleNames, PanelWidth-5-5*Width-4*Space, PanelHeight-Height-5, Width, Height)
     ResizeGadget(#GADGET_ProcedureBrowser_HighlightProcedure, PanelWidth-5-4*Width-3*Space, PanelHeight-Height-5, Width, Height)
@@ -1194,31 +1186,26 @@ Procedure ProcedureBrowser_EventHandler(*Entry.ToolsPanelEntry, EventGadgetID)
           SetGadgetState(#GADGET_ProcedureBrowser, -1)
         CompilerEndIf
         
-        If ProcedureMulticolor ; PeDre - If to EndIf
+        If ProcedureMulticolor
           ; Save the current index for coloring.
           ; Display the previously selected item again with user or standard colors and highlight the currently selected item.
           ProcedureBrowserHighlightTimerForce = #True
           ProcedureBrowser_Highlight(index, ProcedureList()\Type, ProcedureList()\Line)
           ProcedureBrowserCurrentIndex = index ; The index does not have to match the highlighted entry.
-        EndIf ; PeDre
+        EndIf
         
       EndIf
     EndIf
 
     If ProcedureMulticolor
       ; Process the events for the buttons for coloring, automatic selection and scrolling.
-      Select EventGadgetID ; PeDre - Select to EndSelect
+      Select EventGadgetID
           
         Case #GADGET_ProcedureBrowser_FilterInput
-          If EventGadgetType = #PB_EventType_Change And EventData() = #PB_Key_Return
+          If EventGadgetType = #PB_EventType_Change
             ProcedureBrowser_Filter(GetGadgetText(#GADGET_ProcedureBrowser_FilterInput))
           EndIf
-        
-        Case #GADGET_ProcedureBrowser_FilterClear
-          SetGadgetText(#GADGET_ProcedureBrowser_FilterInput, #Null$)
-          ProcedureBrowser_Filter(#Null$)
-          SetActiveGadget(*ActiveSource\EditorGadget)          
-        
+
         Case #GADGET_ProcedureBrowser_HideModuleNames
           ProcedureBrowserHideModuleName = GetGadgetState(EventGadgetID)
           UpdateProcedureList()
@@ -1230,7 +1217,9 @@ Procedure ProcedureBrowser_EventHandler(*Entry.ToolsPanelEntry, EventGadgetID)
               #PB_Gadget_FrontColor, ProcedureBrowserHighlightFrontColor, #ProcedureBrowserColumnName)
           EndIf
           ProcedureBrowserHighlightTimerForce = #True
-          SetActiveGadget(*ActiveSource\EditorGadget)
+          If Not *Entry\IsSeparateWindow
+            SetActiveGadget(*ActiveSource\EditorGadget)
+          EndIf
           
         Case #GADGET_ProcedureBrowser_HighlightProcedure
           ProcedureBrowserHighlightProcedure = GetGadgetState(EventGadgetID)
@@ -1243,15 +1232,21 @@ Procedure ProcedureBrowser_EventHandler(*Entry.ToolsPanelEntry, EventGadgetID)
               ProcedureBrowser_ItemHighlight(-1, -1)
             EndIf
           EndIf
-          SetActiveGadget(*ActiveSource\EditorGadget)
+          If Not *Entry\IsSeparateWindow
+            SetActiveGadget(*ActiveSource\EditorGadget)
+          EndIf
           
         Case #GADGET_ProcedureBrowser_ScrollProcedure
           ProcedureBrowserScrollProcedure = GetGadgetState(EventGadgetID)
-          SetActiveGadget(*ActiveSource\EditorGadget)
+          If Not *Entry\IsSeparateWindow
+            SetActiveGadget(*ActiveSource\EditorGadget)
+          EndIf
           
         Case #GADGET_ProcedureBrowser_EnableFolding
           ProcedureBrowserEnableFolding = GetGadgetState(EventGadgetID)
-          SetActiveGadget(*ActiveSource\EditorGadget)
+          If Not *Entry\IsSeparateWindow
+            SetActiveGadget(*ActiveSource\EditorGadget)
+          EndIf
           
         Case #GADGET_ProcedureBrowser_FrontColor
           If ProcedureBrowserCurrentIndex > -1
@@ -1262,7 +1257,9 @@ Procedure ProcedureBrowser_EventHandler(*Entry.ToolsPanelEntry, EventGadgetID)
               ProcedureBrowser_ItemColorUpdate()
             EndIf
           EndIf
-          SetActiveGadget(*ActiveSource\EditorGadget)
+          If Not *Entry\IsSeparateWindow
+            SetActiveGadget(*ActiveSource\EditorGadget)
+          EndIf
           
         Case #GADGET_ProcedureBrowser_BackColor
           If ProcedureBrowserCurrentIndex > -1
@@ -1273,7 +1270,9 @@ Procedure ProcedureBrowser_EventHandler(*Entry.ToolsPanelEntry, EventGadgetID)
               ProcedureBrowser_ItemColorUpdate()
             EndIf
           EndIf
-          SetActiveGadget(*ActiveSource\EditorGadget)
+          If Not *Entry\IsSeparateWindow
+            SetActiveGadget(*ActiveSource\EditorGadget)
+          EndIf
           
         Case #GADGET_ProcedureBrowser_RestoreColor
           If ProcedureBrowserCurrentIndex > -1
@@ -1281,12 +1280,16 @@ Procedure ProcedureBrowser_EventHandler(*Entry.ToolsPanelEntry, EventGadgetID)
             ProcedureBrowser_ItemColorDelete(ProcedureList()\Name$)
             ProcedureBrowser_ItemColorUpdate()
           EndIf
-          SetActiveGadget(*ActiveSource\EditorGadget)
+          If Not *Entry\IsSeparateWindow
+            SetActiveGadget(*ActiveSource\EditorGadget)
+          EndIf
           
         CompilerIf Not #CompileLinuxGtk ; Event is processed in ProcedureBrowser_CopyClipboardButtonEvent().
         Case #GADGET_ProcedureBrowser_CopyClipboard
           ProcedureBrowser_ItemsCopyClipbord(0)
-          SetActiveGadget(*ActiveSource\EditorGadget)
+          If Not *Entry\IsSeparateWindow
+            SetActiveGadget(*ActiveSource\EditorGadget)
+          EndIf
         CompilerEndIf
           
         Case #GADGET_ProcedureBrowser_SwitchButtons
@@ -1299,7 +1302,9 @@ Procedure ProcedureBrowser_EventHandler(*Entry.ToolsPanelEntry, EventGadgetID)
           HideGadget(#GADGET_ProcedureBrowser_BackColor, Bool(Not ProcedureBrowserSwitchButtons))
           HideGadget(#GADGET_ProcedureBrowser_RestoreColor, Bool(Not ProcedureBrowserSwitchButtons))
           HideGadget(#GADGET_ProcedureBrowser_CopyClipboard, Bool(Not ProcedureBrowserSwitchButtons))
-          SetActiveGadget(*ActiveSource\EditorGadget)
+          If Not *Entry\IsSeparateWindow
+            SetActiveGadget(*ActiveSource\EditorGadget)
+          EndIf
        
       EndSelect
     EndIf
@@ -1314,12 +1319,12 @@ Procedure ProcedureBrowser_PreferenceLoad(*Entry.ToolsPanelEntry)
   PreferenceGroup("ProcedureBrowser")
   ProcedureBrowserSort = ReadPreferenceLong  ("Sort", 0) ; 0=by line, nogroup, 1=by line, group, 2=byname, nogroup  3 = byname, group
   DisplayProtoType     = ReadPreferenceLong  ("Prototype", 0)
-  ProcedureMulticolor  = ReadPreferenceLong  ("Multicolor", 0)
+  ProcedureMulticolor  = ReadPreferenceLong  ("Multicolor", 1)
   
   ProcedureBrowserHideModuleName = ReadPreferenceLong("HideModuleName", 0)
-  ProcedureBrowserHighlightProcedure = ReadPreferenceLong("HighlightProcedure", 0)
+  ProcedureBrowserHighlightProcedure = ReadPreferenceLong("HighlightProcedure", 1)
   ProcedureBrowserHighlightTimer = ReadPreferenceLong("HighlightTimer", 1000)
-  ProcedureBrowserScrollProcedure = ReadPreferenceLong("ScrollProcedure", 0)
+  ProcedureBrowserScrollProcedure = ReadPreferenceLong("ScrollProcedure", 1)
   ProcedureBrowserEnableFolding = ReadPreferenceLong("EnableFolding", 0)
   ProcedureBrowserSwitchButtons = ReadPreferenceLong("SwitchButtons", 0)
   
@@ -1365,7 +1370,7 @@ Procedure ProcedureBrowser_PreferenceSave(*Entry.ToolsPanelEntry)
   
   PreferenceComment("")
   PreferenceGroup("ProcedureBrowser_ItemColor")
-  With ProcedureBrowserItemColorList() ; PeDre With to EndWith
+  With ProcedureBrowserItemColorList()
     Counter = 1
     ForEach ProcedureBrowserItemColorList()
       WritePreferenceString(Str(Counter),  "" + \FrontColor + "," + \BackColor + "," + \Text$)
@@ -1456,7 +1461,7 @@ Procedure ProcedureBrowser_PreferenceChanged(*Entry.ToolsPanelEntry, IsConfigOpe
     If ProcedureBrowserSort <> Backup_ProcedureBrowserSort Or DisplayProtoType <> Backup_DisplayProtoType
       ProcedureReturn 1
     ElseIf ProcedureMulticolor <> Backup_ProcedureMulticolor
-      ProcedureReturn 1 ; PeDre
+      ProcedureReturn 1
     EndIf
     
   EndIf
